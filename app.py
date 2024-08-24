@@ -127,21 +127,27 @@ def handle_command():
 @app.route("/slack/interactions", methods=["POST"])
 def handle_interactions():
     payload = request.json
+    print("Received interaction payload:", payload)  # Log the payload to see what’s coming in
+
     if payload["type"] == "view_submission":
-        view_data = payload["view"]["state"]["values"]
+        try:
+            view_data = payload["view"]["state"]["values"]
+            title = view_data["title_block"]["title"]["value"]
+            description = view_data["description_block"]["description"]["value"]
+            component = view_data["component_block"]["component"]["selected_option"]["value"]
 
-        title = view_data["title_block"]["title"]["value"]
-        description = view_data["description_block"]["description"]["value"]
-        component = view_data["component_block"]["component"]["selected_option"]["value"]
+            user_id = payload["user"]["id"]
+            user_info = slack_client.users_info(user=user_id)
+            email = user_info['user']['profile']['email']
 
-        user_id = payload["user"]["id"]
-        user_info = slack_client.users_info(user=user_id)
-        email = user_info['user']['profile']['email']
+            # Submit the issue to Linear
+            submit_issue_to_linear(title, description, component, email)
+            
+            return jsonify({"response_action": "clear"})
 
-        # Here you'd call your backend function to submit this to Linear
-        # submit_issue_to_linear(title, description, component, email)
-
-        return jsonify({"response_action": "clear"})
+        except Exception as e:
+            print("Error processing interaction:", str(e))
+            return jsonify({"error": "There was an error processing the interaction"}), 500
 
     return jsonify({"status": "ok"})
 
