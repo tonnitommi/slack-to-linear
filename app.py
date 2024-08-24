@@ -97,7 +97,7 @@ def handle_command():
                                 {
                                     "text": {
                                         "type": "plain_text",
-                                        "text": "Workroom UI"
+                                        "text": "Work Room"
                                     },
                                     "value": "dd51de8b-6f12-47a4-94a8-73b090b0303e"
                                 }
