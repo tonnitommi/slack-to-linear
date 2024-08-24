@@ -184,7 +184,7 @@ def slack_events():
             title = text.replace(f"<@{data['authorizations'][0]['user_id']}>", "").strip()
 
             # Create the issue in Linear
-            submit_issue_to_linear(title, description, "component_id_if_needed", email)
+            submit_issue_to_linear(title, description, None, email)
 
             # Respond in the thread or channel
             slack_client.chat_postMessage(
