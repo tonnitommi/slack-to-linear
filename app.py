@@ -150,14 +150,61 @@ def handle_interactions():
 
     return jsonify({"status": "ok"})
 
-def submit_issue_to_linear(title, description, component, email):
+@app.route("/slack/events", methods=["POST"])
+def slack_events():
+    data = request.json
+
+    # Slack's URL verification challenge
+    if "challenge" in data:
+        return jsonify({"challenge": data["challenge"]})
+
+    # Handle the app_mention event
+    if data.get("event", {}).get("type") == "app_mention":
+        event = data["event"]
+        user_id = event["user"]
+        text = event["text"]
+        channel_id = event["channel"]
+        thread_ts = event.get("thread_ts")
+
+        try:
+            # Retrieve the thread messages (if mentioned in a thread)
+            if thread_ts:
+                response = slack_client.conversations_replies(channel=channel_id, ts=thread_ts)
+                messages = response["messages"]
+                description = "\n".join([msg["text"] for msg in messages])
+            else:
+                description = text
+
+            # Get the user's email
+            user_info = slack_client.users_info(user=user_id)
+            email = user_info['user']['profile']['email']
+
+            # Remove the mention from the title
+            title = text.replace(f"<@{data['authorizations'][0]['user_id']}>", "").strip()
+
+            # Create the issue in Linear
+            submit_issue_to_linear(title, description, "component_id_if_needed", email)
+
+            # Respond in the thread or channel
+            slack_client.chat_postMessage(
+                channel=channel_id,
+                thread_ts=thread_ts if thread_ts else event["ts"],
+                text="Issue created successfully from this conversation."
+            )
+
+        except SlackApiError as e:
+            logging.error(f"Error creating issue: {e.response['error']}")
+
+    return jsonify({"status": "ok"})
+
+def submit_issue_to_linear(title, description, component=None, email=None):
     """
     Submits an issue to Linear.
 
     :param title: The title of the issue
     :param description: The detailed description of the issue
-    :param component: The ID of the component (label) selected by the user
-    :param email: The email of the user reporting the issue
+    :param component: The ID of the component (label) selected by the user (optional)
+    :param email: The email of the user reporting the issue (optional)
     """
 
     # The Linear API URL for creating an issue
@@ -168,6 +215,11 @@ def submit_issue_to_linear(title, description, component, email):
         "Authorization": os.getenv('LINEAR_API_KEY'),
         "Content-Type": "application/json"
     }
+
+    # Prepare the list of label IDs
+    label_ids = ["59f1342b-9ba3-4168-b3f6-a097a3de40af"]  # Fixed label ID
+    if component:
+        label_ids.append(component)
 
     # GraphQL mutation to create an issue in Linear
     mutation = {
@@ -185,9 +237,9 @@ def submit_issue_to_linear(title, description, component, email):
         "variables": {
             "input": {
                 "title": title,
-                "description": f"{description}\n\nReported by: {email}",
+                "description": f"{description}\n\nReported by: {email}" if email else description,
                 "teamId": os.getenv("LINEAR_TEAM_ID"),
-                "labelIds": ["59f1342b-9ba3-4168-b3f6-a097a3de40af", component]  # Always include the fixed label ID
+                "labelIds": label_ids  # Include the label IDs list
             }
         }
     }
