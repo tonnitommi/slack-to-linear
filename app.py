@@ -108,13 +108,20 @@ def handle_command():
             }
         )
 
-        # Extracting the relevant information to return a proper JSON response
+        # Debugging: Log the response from Slack
+        print("Slack API Response:", response)
+
+        # Ensure that the response is handled correctly
         return jsonify({
             "status": "success",
             "response_metadata": response["response_metadata"] if "response_metadata" in response else None
         })
 
     except SlackApiError as e:
+        # Debugging: Log the error details
+        print("Slack API Error:", e.response["error"])
+
+        # Return the error to the client
         return jsonify({"error": str(e.response["error"])})
 
 @app.route("/slack/interactions", methods=["POST"])
