@@ -4,6 +4,8 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from dotenv import load_dotenv
 import requests
+import logging
+import json
 
 load_dotenv()
 
@@ -126,29 +128,33 @@ def handle_command():
 
 @app.route("/slack/interactions", methods=["POST"])
 def handle_interactions():
-    print("Interaction received")
-    payload = request.json
-    print("Received interaction payload:", payload)  # Log the payload to see what’s coming in
+    # Parse the URL-encoded form data
+    payload = request.form.get("payload")
+    
+    if payload:
+        # Convert the payload from JSON string to a Python dictionary
+        payload = json.loads(payload)
+        logging.info("Received interaction payload: %s", payload)
 
-    if payload["type"] == "view_submission":
-        try:
-            view_data = payload["view"]["state"]["values"]
-            title = view_data["title_block"]["title"]["value"]
-            description = view_data["description_block"]["description"]["value"]
-            component = view_data["component_block"]["component"]["selected_option"]["value"]
+        if payload["type"] == "view_submission" and payload["view"]["callback_id"] == "issue_report_modal":
+            try:
+                view_data = payload["view"]["state"]["values"]
+                title = view_data["title_block"]["title"]["value"]
+                description = view_data["description_block"]["description"]["value"]
+                component = view_data["component_block"]["component"]["selected_option"]["value"]
 
-            user_id = payload["user"]["id"]
-            user_info = slack_client.users_info(user=user_id)
-            email = user_info['user']['profile']['email']
+                user_id = payload["user"]["id"]
+                user_info = slack_client.users_info(user=user_id)
+                email = user_info['user']['profile']['email']
 
-            # Submit the issue to Linear
-            submit_issue_to_linear(title, description, component, email)
-            
-            return jsonify({"response_action": "clear"})
+                # Submit the issue to Linear
+                submit_issue_to_linear(title, description, component, email)
 
-        except Exception as e:
-            print("Error processing interaction:", str(e))
-            return jsonify({"error": "There was an error processing the interaction"}), 500
+                return jsonify({"response_action": "clear"})
+
+            except Exception as e:
+                logging.error("Error processing interaction: %s", str(e))
+                return jsonify({"error": "There was an error processing the interaction"}), 500
 
     return jsonify({"status": "ok"})
 
