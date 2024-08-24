@@ -217,10 +217,21 @@ def submit_issue_to_linear(title, description, component=None, email=None):
         "Content-Type": "application/json"
     }
 
-    # Prepare the list of label IDs
+    # Prepare the list of label IDs, including the fixed label ID
     label_ids = ["59f1342b-9ba3-4168-b3f6-a097a3de40af"]  # Fixed label ID
     if component:
         label_ids.append(component)
+
+    # Prepare the input dictionary for the mutation
+    input_data = {
+        "title": title,
+        "description": f"{description}\n\nReported by: {email}" if email else description,
+        "teamId": os.getenv("LINEAR_TEAM_ID"),
+    }
+
+    # Only include labelIds if there are valid labels to include
+    if label_ids:
+        input_data["labelIds"] = label_ids
 
     # GraphQL mutation to create an issue in Linear
     mutation = {
@@ -236,27 +247,27 @@ def submit_issue_to_linear(title, description, component=None, email=None):
         }
         """,
         "variables": {
-            "input": {
-                "title": title,
-                "description": f"{description}\n\nReported by: {email}" if email else description,
-                "teamId": os.getenv("LINEAR_TEAM_ID"),
-                "labelIds": label_ids  # Include the label IDs list
-            }
+            "input": input_data
         }
     }
 
     # Make the request to the Linear API
     response = requests.post(linear_url, json=mutation, headers=headers)
 
+    # Log the response status and content
+    logging.info(f"Linear API Response Status Code: {response.status_code}")
+    logging.info(f"Linear API Response Text: {response.text}")
+
     # Handle the response
     if response.status_code == 200:
         result = response.json()
         if result.get("data", {}).get("issueCreate", {}).get("success"):
-            print(f"Issue created successfully: {result['data']['issueCreate']['issue']['title']}")
+            logging.info(f"Issue created successfully: {result['data']['issueCreate']['issue']['title']}")
         else:
-            print("Failed to create issue in Linear.")
+            logging.error("Failed to create issue in Linear.")
+            logging.error(f"Linear API Error: {result.get('errors', 'Unknown error')}")
     else:
-        print(f"Error: {response.status_code} - {response.text}")
+        logging.error(f"Error: {response.status_code} - {response.text}")
 
 if __name__ == "__main__":
     app.run(port=3000)
