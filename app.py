@@ -17,9 +17,10 @@ slack_client = WebClient(token=slack_token)
 @app.route("/slack/command", methods=["POST"])
 def handle_command():
     trigger_id = request.form.get("trigger_id")
-    print(f"Command received {trigger_id}")
+    text = request.form.get("text")  # This captures the text after the command
+
+    # Use the text as the default title in the modal
     try:
-        # Open a modal when the slash command is used
         response = slack_client.views_open(
             trigger_id=trigger_id,
             view={
@@ -42,8 +43,9 @@ def handle_command():
                             "action_id": "title",
                             "placeholder": {
                                 "type": "plain_text",
-                                "text": "Enter the issue title"
-                            }
+                                "text": "Enter the issue title - one line only"
+                            },
+                            "initial_value": text  # Pre-fill the title with the text from the command
                         }
                     },
                     {
@@ -59,7 +61,7 @@ def handle_command():
                             "multiline": True,
                             "placeholder": {
                                 "type": "plain_text",
-                                "text": "Enter a detailed description"
+                                "text": "Enter a detailed description of how to reproduce the issue. More details are better!"
                             }
                         }
                     },
@@ -110,20 +112,10 @@ def handle_command():
             }
         )
 
-        # Debugging: Log the response from Slack
-        print("Slack API Response:", response)
-
-        # Ensure that the response is handled correctly
-        return jsonify({
-            "status": "success",
-            "response_metadata": response["response_metadata"] if "response_metadata" in response else None
-        })
+        return jsonify({"status": "success"})
 
     except SlackApiError as e:
-        # Debugging: Log the error details
-        print("Slack API Error:", e.response["error"])
-
-        # Return the error to the client
+        logging.error("Slack API Error: %s", e.response["error"])
         return jsonify({"error": str(e.response["error"])})
 
 @app.route("/slack/interactions", methods=["POST"])
