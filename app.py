@@ -152,6 +152,7 @@ def handle_interactions():
 
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
+    print("Received event")
     data = request.json
 
     # Slack's URL verification challenge
