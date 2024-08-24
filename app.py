@@ -15,7 +15,7 @@ slack_client = WebClient(token=slack_token)
 @app.route("/slack/command", methods=["POST"])
 def handle_command():
     trigger_id = request.form.get("trigger_id")
-
+    print(f"Command received {trigger_id}")
     try:
         # Open a modal when the slash command is used
         response = slack_client.views_open(
@@ -126,6 +126,7 @@ def handle_command():
 
 @app.route("/slack/interactions", methods=["POST"])
 def handle_interactions():
+    print("Interaction received")
     payload = request.json
     print("Received interaction payload:", payload)  # Log the payload to see what’s coming in
 
