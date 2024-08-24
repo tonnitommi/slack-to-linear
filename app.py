@@ -16,8 +16,8 @@ slack_client = WebClient(token=slack_token)
 def handle_command():
     trigger_id = request.form.get("trigger_id")
 
-    # Open a modal when the slash command is used
     try:
+        # Open a modal when the slash command is used
         response = slack_client.views_open(
             trigger_id=trigger_id,
             view={
@@ -107,9 +107,15 @@ def handle_command():
                 }
             }
         )
-        return jsonify(response)
+
+        # Extracting the relevant information to return a proper JSON response
+        return jsonify({
+            "status": "success",
+            "response_metadata": response["response_metadata"] if "response_metadata" in response else None
+        })
+
     except SlackApiError as e:
-        return jsonify({"error": str(e.response['error'])})
+        return jsonify({"error": str(e.response["error"])})
 
 @app.route("/slack/interactions", methods=["POST"])
 def handle_interactions():
