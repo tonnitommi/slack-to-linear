@@ -217,8 +217,8 @@ def submit_issue_to_linear(title, description, component=None, email=None):
         "Content-Type": "application/json"
     }
 
-    # Prepare the list of label IDs, including the fixed label ID
-    label_ids = ["59f1342b-9ba3-4168-b3f6-a097a3de40af"]  # Fixed label ID
+    # Prepare the list of label IDs, including the fixed label IDs (User-Reported and Bug)
+    label_ids = ["59f1342b-9ba3-4168-b3f6-a097a3de40af", "9a40076f-0451-4c31-9427-0a7ab313c524"]
     if component:
         label_ids.append(component)
 
